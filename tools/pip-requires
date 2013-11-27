@@ -1,0 +1,14 @@
+unittest2
+nose
+
+time
+shutil
+subprocess
+hashlib
+logging
+random
+struct
+Crypto
+python-swiftclient
+optparse
+pwd
