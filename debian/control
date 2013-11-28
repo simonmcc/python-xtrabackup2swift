@@ -1,0 +1,16 @@
+Source: python-xtrabackup2swift
+Section: python
+Priority: optional
+Maintainer: Kiall Mac Innes <kiall@managedit.ie>
+Build-Depends: debhelper (>= 8.0.0),
+               python-setuptools,
+               python
+Standards-Version: 3.9.2
+
+Package: python-xtrabackup2swift
+Architecture: all
+Depends: python-crypto,
+         python-swiftclient,
+         ${misc:Depends}
+Description: Xtra Backup 2 swift
+ Xtra Backup 2 swift
