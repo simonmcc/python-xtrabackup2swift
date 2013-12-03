@@ -23,8 +23,10 @@ python setup.py develop
 Building Debian/Ubuntu packages
 ===============================
 
-sudo apt-get install git-buildpackage
-git-buildpackage
+sudo apt-get update
+sudo apt-get install -y git-buildpackage build-essential cdbs dh-make python-dev python-virtualenv
+# build unsiged (FIXME)
+git-buildpackage -us -uc
 
 # TODO: move to pbr so that we can auto-generate version strings from commit SHA1
 
