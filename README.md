@@ -17,7 +17,7 @@ sudo apt-get update
 sudo apt-get install python-dev python-virtualenv
 rm -rf /tmp/.venv/ ; virtualenv /tmp/.venv/ ; . /tmp/.venv/bin/activate
 pip install --upgrade setuptools
-pip install hashlib crypto logging
+pip install python-swiftclient
 python setup.py develop
 
 Building Debian/Ubuntu packages
@@ -32,7 +32,7 @@ Development (Mac/OSX)
 =====================
 
 rm -rf .venv/ ; virtualenv .venv/ ; . .venv/bin/activate
-pip install --upgrade setuptools==0.9.8
-pip install --upgrade setuptools
-pip install crypto
+# something is broken in the python-swiftclient
+# dependency chain install via pip as setuptools borks
+pip install python-swiftclient
 python setup.py develop

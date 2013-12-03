@@ -26,9 +26,7 @@ setup(
     url='https://github.com/moniker-dns/python-xtrabackup2swift',
     packages=find_packages(exclude=['bin']),
     install_requires=[
-        'hashlib',
-        'logging',
-        'crypto',
+        'pycrypto',
         'python-swiftclient',
     ],
     scripts=[
