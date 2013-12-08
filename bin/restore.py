@@ -17,7 +17,7 @@ LOG = logging.getLogger(__name__)
 parser = OptionParser()
 
 parser.add_option("-w", "--work-dir",
-                  dest="opt_workdir",
+                  dest="workdir",
                   default="",
                   metavar="Work Directory",
                   help="Top level restoration directory")
@@ -29,17 +29,17 @@ parser.add_option("-f", "--file",
                   help="Name of file to restore from")
 
 parser.add_option("-c", "--container",
-                  dest="opt_container",
+                  dest="container",
                   default="",
                   metavar="CONTAINER",
                   help="Container where backups exist")
 
 (options, args) = parser.parse_args()
 
-opt_container = options.opt_container
-opt_workdir = options.opt_workdir
-if opt_workdir == "":
-    opt_workdir = os.getcwd() 
+container = options.container
+workdir = options.workdir
+if workdir == "":
+    workdir = os.getcwd()
 
 # globals, set later
 restore_name = ''
@@ -47,7 +47,7 @@ restore_file = ''
 
 # Settings
 
-restore_dir = opt_workdir + '/' + 'restore'
+restore_dir = workdir + '/' + 'restore'
 restore_conf = 'restore.cnf'
 backup_key = "/etc/mysql-backup/.backup.key"
 
@@ -140,12 +140,12 @@ def run_restoration():
     # get AES key
     backup_key = get_backup_key()
 
-    if not os.path.exists(opt_workdir):
-        os.mkdir(opt_workdir)
+    if not os.path.exists(workdir):
+        os.mkdir(workdir)
 
-    os.chdir(opt_workdir)
+    os.chdir(workdir)
 
-    download_file_from_swift(opt_container, restore_file_enc)
+    download_file_from_swift(container, restore_file_enc)
 
     # AES encrypt the file before uploading
     decrypt_file(backup_key, restore_file_enc, restore_file)
@@ -157,15 +157,15 @@ def run_restoration():
         os.unlink(restore_dir)
 
     # make sure this data directory is owned by mysql:mysql
-    chown_r(opt_workdir + '/' + restore_name,
+    chown_r(workdir + '/' + restore_name,
             getpwnam('mysql').pw_uid, getpwnam('mysql').pw_gid)
 
     # easy link to reference
-    link = opt_workdir + '/' + restore_name
+    link = workdir + '/' + restore_name
     os.symlink(link, restore_dir)
     os.chown(restore_dir, getpwnam('mysql').pw_uid, getpwnam('mysql').pw_gid)
 
-    r = open(opt_workdir + '/' + restore_conf, 'w')
+    r = open(workdir + '/' + restore_conf, 'w')
     r.write("[mysqld]\n")
     r.write("data_dir = %s" % restore_dir)
     r.close()
@@ -218,8 +218,8 @@ def chown_r(starting_dir, uid, gid):
 if __name__ == '__main__':
     # if not supplied by command line options, then get from user
     if restore_file_enc == "":
-        print "container %s" % opt_container
-        list_backups(opt_container)
+        print "container %s" % container
+        list_backups(container)
         print "What file do you wish to restore from? Enter: "
         restore_file_enc = sys.stdin.readline().rstrip()
     # get name of tar.gz

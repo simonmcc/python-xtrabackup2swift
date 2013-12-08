@@ -9,90 +9,105 @@ import logging
 import random
 import struct
 
+from socket import gethostname
+from Crypto.Cipher import AES
+from swiftclient import Connection, ClientException
+
 from optparse import OptionParser
 parser = OptionParser()
 
-use_swift = True 
+use_swift = True
 
 parser.add_option("-l", "--log", dest="log_file",
                   help="Log file",
                   metavar="LOG")
 
-parser.add_option("-c", "--container", 
+parser.add_option("-c", "--container",
                   default="db_backup",
-                  dest="opt_container",
+                  dest="container",
                   help="CONTAINER",
                   metavar="CONTAINER")
 
-parser.add_option("-u", "--os-username", 
+parser.add_option("-u", "--os-username",
                   default="",
-                  dest="opt_username",
+                  dest="username",
                   help="User",
                   metavar="USER")
 
-parser.add_option("-p", "--os-password", 
+parser.add_option("-p", "--os-password",
                   default="",
-                  dest="opt_password",
+                  dest="password",
                   help="Swift Password",
                   metavar="PASSWORD")
 
 
-parser.add_option("-t", "--os-tenant-name", 
+parser.add_option("-t", "--os-tenant-name",
                   default="",
-                  dest="opt_tenant_name",
+                  dest="tenant_name",
                   help="Tenant Name",
                   metavar="TENANT")
 
-parser.add_option("-a", "--os-auth-url", 
+parser.add_option("-a", "--os-auth-url",
                   default="",
-                  dest="opt_auth_url",
+                  dest="auth_url",
                   help="Auth URL",
                   metavar="AUTH_URL")
 
 
-parser.add_option("-D", "--purge-on-disk", 
+parser.add_option("-D", "--purge-on-disk",
                   default="false",
-                  dest="opt_purge",
+                  dest="purge",
                   help="Purge Backup on disk",
                   metavar="PURGE")
 
-parser.add_option("-P", "--purge-enc-on-disk", 
+parser.add_option("-P", "--purge-enc-on-disk",
                   default="false",
-                  dest="opt_purge_enc",
+                  dest="purge_enc",
                   help="Purge Backup on disk",
                   metavar="PURGE_ENC")
+
+parser.add_option("-b", "--backup-dir",
+                  default="/var/lib/mysql-backup",
+                  dest="backup_dir",
+                  help="Backup directory",
+                  metavar="BACKUP_DIR")
+
+parser.add_option("-s", "--secret-file",
+                  default="/etc/mysql-backup/.backup.key",
+                  dest="secret_file",
+                  help="Secret file",
+                  metavar="SECRET FILE")
 
 (options, args) = parser.parse_args()
 
 log_file = options.log_file
 
-opt_purge = options.opt_purge
-opt_purge_enc = options.opt_purge_enc
 
-opt_auth_url = options.opt_auth_url
-if opt_auth_url == "":
-    opt_auth_url = os.environ.get('OS_AUTH_URL', '')
+purge = options.purge
+purge_enc = options.purge_enc
 
-opt_tenant_name = options.opt_tenant_name
-if opt_tenant_name == "":
-    opt_tenant_name = os.environ.get('OS_TENANT_NAME', '')
+auth_url = options.auth_url
+if auth_url == "":
+    auth_url = os.environ.get('OS_AUTH_URL', '')
 
-opt_password = options.opt_password
-if opt_password == "":
-    opt_password = os.environ.get('OS_PASSWORD', '')
+tenant_name = options.tenant_name
+if tenant_name == "":
+    tenant_name = os.environ.get('OS_TENANT_NAME', '')
 
-opt_username = options.opt_username
-if opt_username == "":
-    opt_username = os.environ.get('OS_USERNAME', '')
+password = options.password
+if password == "":
+    password = os.environ.get('OS_PASSWORD', '')
 
-opt_container = options.opt_container
-if opt_container == "":
-    opt_container = os.environ.get('BACKUP_CONTAINER', 'db_backup')
+username = options.username
+if username == "":
+    username = os.environ.get('OS_USERNAME', '')
 
-from socket import gethostname
-from Crypto.Cipher import AES
-from swiftclient import Connection, ClientException
+container = options.container
+if container == "":
+    container = os.environ.get('BACKUP_CONTAINER', 'db_backup')
 
+backup_dir = options.backup_dir
+secret_file = options.secret_file
 
 logging.StreamHandler(stream=log_file)
 
@@ -101,16 +116,14 @@ logging.basicConfig(filename=log_file,
 
 LOG = logging.getLogger(__name__)
 
-
 # Settings
 workdir = os.getcwd()
 backup_command = '/usr/bin/innobackupex --no-timestamp'
 prepare_command = '/usr/bin/innobackupex --apply-log'
-backup_dir = '/var/lib/mysql-backup'
-backup_name = "%s-%s-backup" % (time.strftime("%Y-%m-%d-%H%M-%Z-%a"), gethostname())
+backup_name = "%s-%s-backup" % (time.strftime("%Y-%m-%d-%H%M-%Z-%a"),
+              gethostname())
 backup_file = backup_name + ".tar.gz"
 backup_file_enc = backup_file + ".enc"
-backup_key = "/etc/mysql-backup/.backup.key"
 content_type = 'application/gzip'
 
 
@@ -147,8 +160,8 @@ def ensure_container_exists(conn, container):
         conn.put_container(container, headers=headers)
 
 
-def get_backup_key():
-    with open(backup_key, "r") as fh:
+def get_secret_file():
+    with open(secret_file, "r") as fh:
         key = fh.readline()
 
     return key.rstrip()
@@ -162,7 +175,7 @@ def upload_file_to_swift(conn,
                          content_type,
                          content_length):
         LOG.info('Uploading %s to swift in the container %s' %
-                  (filename, container))
+                 (filename, container))
         # you must set headers this way
         headers = {"Content-Type": content_type}
 
@@ -182,7 +195,7 @@ def upload_file_to_swift(conn,
 
 def run_backup():
     # get AES key
-    backup_key = get_backup_key()
+    secret = get_secret_file()
 
     # initial backup
     backup_task("%s %s/%s" % (backup_command, backup_dir, backup_name))
@@ -195,7 +208,7 @@ def run_backup():
     backup_task("tar cvzf %s %s" % (backup_file, backup_name))
 
     # AES encrypt the file before uploading
-    encrypt_file(backup_key, backup_file, backup_file_enc)
+    encrypt_file(secret, backup_file, backup_file_enc)
 
     # Get the md5 for the file
     file_md5 = md5_for_file(backup_file_enc)
@@ -209,10 +222,10 @@ def run_backup():
     try:
         if use_swift:
             conn = connect_to_swift()
-            ensure_container_exists(conn, opt_container)
+            ensure_container_exists(conn, container)
 
             with open(backup_file_enc, 'rb') as fh:
-                upload_file_to_swift(conn, opt_container,
+                upload_file_to_swift(conn, container,
                                      backup_file_enc,
                                      fh,
                                      file_md5,
@@ -221,12 +234,12 @@ def run_backup():
     finally:
         # Cleanup the backup directory and files
         LOG.info('Removing directory %s/%s' %
-                    (backup_dir, backup_name))
+                 (backup_dir, backup_name))
         shutil.rmtree("%s/%s" % (backup_dir, backup_name))
-        if opt_purge:
+        if purge:
             LOG.info('unlink(%s)' % backup_file)
             os.unlink(backup_file)
-        if opt_purge_enc:
+        if purge_enc:
             LOG.info('unlink(%s)' % backup_file_enc)
             os.unlink(backup_file_enc)
 
@@ -303,19 +316,21 @@ def decrypt_file(key, in_filename, out_filename=None, chunksize=24 * 1024):
 
             outfile.truncate(origsize)
 
+
 def connect_to_swift():
-    print "attempting to connect to %s as %s %s %s" % (opt_auth_url, opt_username, opt_password, opt_tenant_name)
+    print "attempting to connect to %s as %s %s %s" % \
+          (auth_url, username, password, tenant_name)
     try:
         # establish connection
-        conn = Connection(opt_auth_url,
-                          opt_username,
-                          opt_password, 
-                          tenant_name=opt_tenant_name,
+        conn = Connection(auth_url,
+                          username,
+                          password,
+                          tenant_name=tenant_name,
                           auth_version="2.0")
     except ClientException, err:
         LOG.critical("No Swift Connection: %s", str(err))
 
-    return conn 
+    return conn
 
 
 if __name__ == '__main__':

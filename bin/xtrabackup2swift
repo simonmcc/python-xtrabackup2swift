@@ -2,8 +2,6 @@
 
 import os
 import logging
-import time
-from socket import gethostname
 
 import xtrabackup2swift
 
@@ -15,25 +13,25 @@ use_swift = True
 
 log_file = options.log_file
 
-opt_auth_url = options.opt_auth_url
-if opt_auth_url == "":
-    opt_auth_url = os.environ.get('OS_AUTH_URL', '')
+auth_url = options.auth_url
+if auth_url == "":
+    auth_url = os.environ.get('OS_AUTH_URL', '')
 
-opt_tenant_name = options.opt_tenant_name
-if opt_tenant_name == "":
-    opt_tenant_name = os.environ.get('OS_TENANT_NAME', '')
+tenant_name = options.tenant_name
+if tenant_name == "":
+    tenant_name = os.environ.get('OS_TENANT_NAME', '')
 
-opt_password = options.opt_password
-if opt_password == "":
-    opt_password = os.environ.get('OS_PASSWORD', '')
+password = options.password
+if password == "":
+    password = os.environ.get('OS_PASSWORD', '')
 
-opt_username = options.opt_username
-if opt_username == "":
-    opt_username = os.environ.get('OS_USERNAME', '')
+username = options.username
+if username == "":
+    username = os.environ.get('OS_USERNAME', '')
 
-opt_container = options.opt_container
-if opt_container == "":
-    opt_container = os.environ.get('BACKUP_CONTAINER', 'db_backup')
+container = options.container
+if container == "":
+    container = os.environ.get('BACKUP_CONTAINER', 'db_backup')
 
 logging.StreamHandler(stream=log_file)
 

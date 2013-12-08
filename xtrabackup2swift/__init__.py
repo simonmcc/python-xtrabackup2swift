@@ -18,87 +18,84 @@ from optparse import OptionParser
 
 LOG = logging.getLogger(__name__)
 
+
 def cli_options():
     parser = OptionParser()
 
     parser.add_option("--use-swift",
-                    action="store_false", dest="use_swift", default=True,
-                    help="Upload backup to Swift (default)")
+                      action="store_false", dest="use_swift", default=True,
+                      help="Upload backup to Swift (default)")
 
     parser.add_option("--no-swift",
-                    action="store_false", dest="use_swift", default=True,
-                    help="Do not upload backup to Swift")
+                      action="store_false", dest="use_swift", default=True,
+                      help="Do not upload backup to Swift")
 
     parser.add_option("-l", "--log", dest="log_file",
-                    help="Log file",
-                    metavar="LOG")
+                      help="Log file", metavar="LOG")
 
     parser.add_option("-c", "--container",
-                    default="db_backup",
-                    dest="opt_container",
-                    help="Swift Container used to store the backup objects",
-                    metavar="CONTAINER")
+                      dest="container", default="db_backup",
+                      help="Swift Container used to store the backup objects",
+                      metavar="CONTAINER")
 
-    parser.add_option("-b", "--backup-key",
-                    default="/etc/mysql-backup/.backup.key",
-                    dest="opt_backup_key",
-                    help="File containing the key used to encrypt/decrypt the backup",
-                    metavar="BACKUP_KEY")
+    parser.add_option("-b", "--backup-dir",
+                      default="/var/lib/mysql-backup",
+                      dest="backup_dir",
+                      help="Backup directory",
+                      metavar="BACKUP_DIR")
+
+    parser.add_option("-s", "--secret-file",
+                      default="/etc/mysql-backup/.backup.key",
+                      dest="secret_file",
+                      help="File containing the key used to encrypt/decrypt \
+                      the backup",
+                      metavar="SECRET_FILE")
 
     parser.add_option("-u", "--os-username",
-                    default=os.environ.get('OS_USERNAME', ''),
-                    dest="opt_username",
-                    help="OpenStack username. Defaults to env[OS_USERNAME]",
-                    metavar="USER")
+                      dest="username",
+                      default=os.environ.get('OS_USERNAME', ''),
+                      help="OpenStack username. Defaults to env[OS_USERNAME]",
+                      metavar="USER")
 
     parser.add_option("-p", "--os-password",
-                    default="",
-                    dest="opt_password",
-                    help="Swift Password",
-                    metavar="PASSWORD")
+                      dest="password", default=os.environ.get('OS_PASSWORD', ''),
+                      secret=True, help="Swift Password. Defaults to \
+                      env[OS_PASSWORD]",
+                      metavar="PASSWORD")
 
     parser.add_option("-t", "--os-tenant-name",
-                    default="",
-                    dest="opt_tenant_name",
-                    help="Tenant Name",
-                    metavar="TENANT")
+                      dest="tenant_name",
+                      default=os.environ.get('OS_TENANT_NAME', ''),
+                      help="Tenant Name. Defaults to env[OS_TENANT_NAME]",
+                      metavar="TENANT")
 
     parser.add_option("-a", "--os-auth-url",
-                    default="",
-                    dest="opt_auth_url",
-                    help="Auth URL",
-                    metavar="AUTH_URL")
+                      dest="auth_url",
+                      default=os.environ.get('OS_AUTH_URL', ''),
+                      help="Auth URL", metavar="AUTH_URL")
 
     parser.add_option("-d", "--datadir",
-                    default="/var/lib/mysql",
-                    dest="opt_datadir",
-                    help="MySQL datadir",
-                    metavar="datadir")
-
+                      dest="datadir", default="/var/lib/mysql",
+                      help="MySQL datadir", metavar="datadir")
 
     parser.add_option("-D", "--purge-on-disk",
-                    default="false",
-                    dest="opt_purge",
-                    help="Purge Backup on disk",
-                    metavar="PURGE")
+                      action="store_false", dest="purge", default="false",
+                      help="Purge Backup on disk", metavar="PURGE")
 
     parser.add_option("-P", "--purge-enc-on-disk",
-                    default="false",
-                    dest="opt_purge_enc",
-                    help="Purge Backup on disk",
-                    metavar="PURGE_ENC")
+                      action="store_false", dest="purge_env",
+                      default="false",
+                      help="Purge Backup on disk", metavar="PURGE_ENC")
 
     parser.add_option("-w", "--work-dir",
-                    dest="opt_workdir",
-                    default=os.getcwd(),
-                    metavar="Work Directory",
-                    help="Top level restoration directory")
+                      dest="workdir", default=os.getcwd(),
+                      metavar="Work Directory",
+                      help="Top level restoration directory")
 
     parser.add_option("-f", "--file",
-                    dest="restore_file_enc",
-                    default="",
-                    metavar="RESTORE_FILE_ENC",
-                    help="Name of file to restore from")
+                      dest="restore_file_enc", default="",
+                      metavar="RESTORE_FILE_ENC",
+                      help="Name of file to restore from")
 
     return parser.parse_args()
 
@@ -136,8 +133,8 @@ def ensure_container_exists(conn, container):
         conn.put_container(container, headers=headers)
 
 
-def get_backup_key(backup_key):
-    with open(backup_key, "r") as fh:
+def get_secret(secret_file):
+    with open(secret_file, "r") as fh:
         key = fh.readline()
 
     return key.rstrip()
@@ -151,7 +148,7 @@ def upload_file_to_swift(conn,
                          content_type,
                          content_length):
         LOG.info('Uploading %s to swift in the container %s' %
-                  (filename, container))
+                (filename, container))
         # you must set headers this way
         headers = {"Content-Type": content_type}
 
@@ -171,27 +168,26 @@ def upload_file_to_swift(conn,
 
 def run_backup(options):
     # Settings
-    workdir = os.getcwd()
     backup_command = '/usr/bin/innobackupex --no-timestamp'
     prepare_command = '/usr/bin/innobackupex --apply-log'
-    backup_dir = '/var/lib/mysql-backup'
-    backup_name = "%s-%s-backup" % (time.strftime("%Y-%m-%d-%H%M-%Z-%a"), gethostname())
+    backup_name = "%s-%s-backup" % (time.strftime("%Y-%m-%d-%H%M-%Z-%a"),
+                  gethostname())
     backup_file = backup_name + ".tar.gz"
     backup_file_enc = backup_file + ".enc"
     backup_key = "/etc/mysql-backup/.backup.key"
     content_type = 'application/gzip'
 
     # get AES key
-    backup_key = get_backup_key(backup_key)
+    backup_key = get_secret(options.secret_file)
 
     # initial backup
-    backup_task("%s %s/%s" % (backup_command, backup_dir, backup_name))
+    backup_task("%s %s/%s" % (backup_command, options.backup_dir, backup_name))
 
     # apply log
-    backup_task("%s %s/%s" % (prepare_command, backup_dir, backup_name))
+    backup_task("%s %s/%s" % (prepare_command, options.backup_dir, backup_name))
 
     # archive the backup
-    os.chdir(backup_dir)
+    os.chdir(options.backup_dir)
     backup_task("tar cvzf %s %s" % (backup_file, backup_name))
 
     # AES encrypt the file before uploading
@@ -209,10 +205,10 @@ def run_backup(options):
     try:
         if options.use_swift:
             conn = connect_to_swift(options)
-            ensure_container_exists(conn, options.opt_container)
+            ensure_container_exists(conn, options.container)
 
             with open(backup_file_enc, 'rb') as fh:
-                upload_file_to_swift(conn, options.opt_container,
+                upload_file_to_swift(conn, options.container,
                                      backup_file_enc,
                                      fh,
                                      file_md5,
@@ -221,12 +217,12 @@ def run_backup(options):
     finally:
         # Cleanup the backup directory and files
         LOG.info('Removing directory %s/%s' %
-                    (backup_dir, backup_name))
-        shutil.rmtree("%s/%s" % (backup_dir, backup_name))
-        if options.opt_purge:
+                 (options.backup_dir, backup_name))
+        shutil.rmtree("%s/%s" % (options.backup_dir, backup_name))
+        if options.purge:
             LOG.info('unlink(%s)' % backup_file)
             os.unlink(backup_file)
-        if options.opt_purge_enc:
+        if options.purge_enc:
             LOG.info('unlink(%s)' % backup_file_enc)
             os.unlink(backup_file_enc)
 
@@ -279,22 +275,21 @@ def encrypt_file(key, in_filename, out_filename=None, chunksize=64 * 1024):
 
 
 def connect_to_swift(options):
-    print "attempting to connect to %s as %s %s %s" % (options.opt_auth_url,
-                                                       options.opt_username,
-                                                       options.opt_password, options.
-                                                       opt_tenant_name)
+    print "attempting to connect to %s as %s %s %s" % (options.auth_url,
+                                                       options.username,
+                                                       options.password,
+                                                       options.tenant_name)
     try:
         # establish connection
-        conn = Connection(options.opt_auth_url,
-                          options.opt_username,
-                          options.opt_password,
-                          tenant_name=options.opt_tenant_name,
+        conn = Connection(options.auth_url,
+                          options.username,
+                          options.password,
+                          tenant_name=options.tenant_name,
                           auth_version="2.0")
     except ClientException, err:
         LOG.critical("No Swift Connection: %s", str(err))
 
     return conn
-
 
 
 def restore_task(command):
@@ -306,9 +301,9 @@ def restore_task(command):
         LOG.debug("%s succeeded" % command)
 
 
-def download_file_from_swift(container, filename):
-    LOG.info("Downloading file %s from container %s" % \
-	    (filename, container))
+def download_file_from_swift(conn, container, filename):
+    LOG.info("Downloading file %s from container %s" %
+             (filename, container))
 
     try:
         headers, body = conn.get_object(container,
@@ -338,7 +333,7 @@ def download_file_from_swift(container, filename):
         LOG.error("%s != %s" % (s_etag, f_etag))
 
 
-def list_backups(container):
+def list_backups(conn, container):
     """
        List backups for informational purposes
     """
@@ -356,24 +351,23 @@ def list_backups(container):
     except ClientException, err:
         if err.http_status != 404:
             raise
-        if not args:
-            print 'Account not found'
-        else:
-            print 'Container %s not found' % repr(args[0])
+
+        # TODO: handle the container not being found/existing
+        # print 'Container %s not found' % repr(args[0])
 
 
 def run_restoration(options):
     # get AES key
-    backup_key = get_backup_key()
+    secret = get_secret(options.secret_file)
 
-    restore_dir = options.opt_workdir + '/' + 'restore'
+    restore_dir = options.workdir + '/' + 'restore'
     restore_conf = 'restore.cnf'
     restore_file_enc = options.restore_file_enc
 
     # if not supplied by command line options, then get from user
     if restore_file_enc == "":
-        print "container %s" % options.opt_container
-        list_backups(options.opt_container)
+        print "container %s" % options.container
+        list_backups(options.container)
         print "What file do you wish to restore from? Enter: "
         restore_file_enc = sys.stdin.readline().rstrip()
         # get name of tar.gz
@@ -381,15 +375,15 @@ def run_restoration(options):
         # get restore name
         restore_name = restore_file.strip('.tar.gz')
 
-    if not os.path.exists(options.opt_workdir):
-        os.mkdir(options.opt_workdir)
+    if not os.path.exists(options.workdir):
+        os.mkdir(options.workdir)
 
-    os.chdir(options.opt_workdir)
+    os.chdir(options.workdir)
 
-    download_file_from_swift(options.opt_container, restore_file_enc)
+    download_file_from_swift(options.container, restore_file_enc)
 
     # AES encrypt the file before uploading
-    decrypt_file(options.backup_key, restore_file_enc, restore_file)
+    decrypt_file(secret, restore_file_enc, restore_file)
 
     restore_task("tar xvzf %s" % restore_file)
 
@@ -398,15 +392,15 @@ def run_restoration(options):
         os.unlink(restore_dir)
 
     # make sure this data directory is owned by mysql:mysql
-    chown_r(options.opt_workdir + '/' + restore_name,
+    chown_r(options.workdir + '/' + restore_name,
             getpwnam('mysql').pw_uid, getpwnam('mysql').pw_gid)
 
     # easy link to reference
-    link = options.opt_workdir + '/' + restore_name
+    link = options.workdir + '/' + restore_name
     os.symlink(link, restore_dir)
     os.chown(restore_dir, getpwnam('mysql').pw_uid, getpwnam('mysql').pw_gid)
 
-    r = open(options.opt_workdir + '/' + restore_conf, 'w')
+    r = open(options.workdir + '/' + restore_conf, 'w')
     r.write("[mysqld]\n")
     r.write("data_dir = %s" % restore_dir)
     r.close()
@@ -421,7 +415,6 @@ def run_restoration(options):
              " and restarting mysql.\n"
              "IMPORTANT: you may have to make sure to back up existing"
              "data directory if it exists by copying it elsewhere!")
-
 
 
 def decrypt_file(key, in_filename, out_filename=None, chunksize=24 * 1024):
@@ -448,6 +441,7 @@ def decrypt_file(key, in_filename, out_filename=None, chunksize=24 * 1024):
                 outfile.write(decryptor.decrypt(chunk))
 
             outfile.truncate(origsize)
+
 
 def chown_r(starting_dir, uid, gid):
     for root, dirs, files in os.walk(starting_dir):
