@@ -34,8 +34,15 @@ parser.add_option("-c", "--container",
                   metavar="CONTAINER",
                   help="Container where backups exist")
 
+parser.add_option("-s", "--secret-file",
+                  default="/etc/mysql-backup/.backup.key",
+                  dest="secret_file",
+                  help="Secret file",
+                  metavar="SECRET FILE")
+
 (options, args) = parser.parse_args()
 
+secret_file = options.secret_file
 container = options.container
 workdir = options.workdir
 if workdir == "":
@@ -49,7 +56,6 @@ restore_file = ''
 
 restore_dir = workdir + '/' + 'restore'
 restore_conf = 'restore.cnf'
-backup_key = "/etc/mysql-backup/.backup.key"
 
 restore_file_enc = options.restore_file_enc
 
@@ -73,16 +79,16 @@ def restore_task(command):
         LOG.debug("%s succeeded" % command)
 
 
-def get_backup_key():
-    with open(backup_key, "r") as fh:
+def get_secret():
+    with open(secret_file, "r") as fh:
         key = fh.readline()
 
     return key.rstrip()
 
 
 def download_file_from_swift(container, filename):
-    LOG.info("Downloading file %s from container %s" % \
-	    (filename, container))
+    LOG.info("Downloading file %s from container %s" %
+             (filename, container))
 
     try:
         headers, body = conn.get_object(container,
@@ -138,7 +144,7 @@ def list_backups(container):
 
 def run_restoration():
     # get AES key
-    backup_key = get_backup_key()
+    secret = get_secret()
 
     if not os.path.exists(workdir):
         os.mkdir(workdir)
@@ -148,7 +154,7 @@ def run_restoration():
     download_file_from_swift(container, restore_file_enc)
 
     # AES encrypt the file before uploading
-    decrypt_file(backup_key, restore_file_enc, restore_file)
+    decrypt_file(secret, restore_file_enc, restore_file)
 
     restore_task("tar xvzf %s" % restore_file)
 
@@ -161,9 +167,12 @@ def run_restoration():
             getpwnam('mysql').pw_uid, getpwnam('mysql').pw_gid)
 
     # easy link to reference
-    link = workdir + '/' + restore_name
-    os.symlink(link, restore_dir)
+    os.symlink(restore_name, restore_dir)
     os.chown(restore_dir, getpwnam('mysql').pw_uid, getpwnam('mysql').pw_gid)
+
+    # remove if exists
+    if os.path.exists(workdir + '/' + restore_conf):
+        os.unlink(workdir + '/' + restore_conf)
 
     r = open(workdir + '/' + restore_conf, 'w')
     r.write("[mysqld]\n")

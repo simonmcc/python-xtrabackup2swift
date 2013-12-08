@@ -83,7 +83,7 @@ def cli_options():
                       help="Purge Backup on disk", metavar="PURGE")
 
     parser.add_option("-P", "--purge-enc-on-disk",
-                      action="store_false", dest="purge_env",
+                      action="store_false", dest="purge_enc",
                       default="false",
                       help="Purge Backup on disk", metavar="PURGE_ENC")
 
@@ -275,10 +275,6 @@ def encrypt_file(key, in_filename, out_filename=None, chunksize=64 * 1024):
 
 
 def connect_to_swift(options):
-    print "attempting to connect to %s as %s %s %s" % (options.auth_url,
-                                                       options.username,
-                                                       options.password,
-                                                       options.tenant_name)
     try:
         # establish connection
         conn = Connection(options.auth_url,
@@ -396,9 +392,12 @@ def run_restoration(options):
             getpwnam('mysql').pw_uid, getpwnam('mysql').pw_gid)
 
     # easy link to reference
-    link = options.workdir + '/' + restore_name
-    os.symlink(link, restore_dir)
+    os.symlink(restore_name, restore_dir)
     os.chown(restore_dir, getpwnam('mysql').pw_uid, getpwnam('mysql').pw_gid)
+
+    # remove if exists
+    if os.path.exists(options.workdir + '/' + restore_conf):
+        os.unlink(options.workdir + '/' + restore_conf)
 
     r = open(options.workdir + '/' + restore_conf, 'w')
     r.write("[mysqld]\n")

@@ -23,7 +23,7 @@ parser.add_option("-l", "--log", dest="log_file",
                   metavar="LOG")
 
 parser.add_option("-c", "--container",
-                  default="db_backup",
+                  default="",
                   dest="container",
                   help="CONTAINER",
                   metavar="CONTAINER")
@@ -55,14 +55,12 @@ parser.add_option("-a", "--os-auth-url",
 
 
 parser.add_option("-D", "--purge-on-disk",
-                  default="false",
-                  dest="purge",
+                  action="store_false", dest="purge",
                   help="Purge Backup on disk",
                   metavar="PURGE")
 
 parser.add_option("-P", "--purge-enc-on-disk",
-                  default="false",
-                  dest="purge_enc",
+                  action="store_false", dest="purge_enc",
                   help="Purge Backup on disk",
                   metavar="PURGE_ENC")
 
@@ -140,6 +138,7 @@ def md5_for_file(filename, block_size=2 ** 20):
 
 
 def backup_task(command):
+    LOG.info('backup_task running: %s' % command)
     try:
         subprocess.check_call("%s" % command, shell=True)
     except subprocess.CalledProcessError:
@@ -160,7 +159,7 @@ def ensure_container_exists(conn, container):
         conn.put_container(container, headers=headers)
 
 
-def get_secret_file():
+def get_secret():
     with open(secret_file, "r") as fh:
         key = fh.readline()
 
@@ -195,7 +194,7 @@ def upload_file_to_swift(conn,
 
 def run_backup():
     # get AES key
-    secret = get_secret_file()
+    secret = get_secret()
 
     # initial backup
     backup_task("%s %s/%s" % (backup_command, backup_dir, backup_name))
@@ -318,8 +317,6 @@ def decrypt_file(key, in_filename, out_filename=None, chunksize=24 * 1024):
 
 
 def connect_to_swift():
-    print "attempting to connect to %s as %s %s %s" % \
-          (auth_url, username, password, tenant_name)
     try:
         # establish connection
         conn = Connection(auth_url,
