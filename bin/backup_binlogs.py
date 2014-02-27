@@ -29,36 +29,6 @@ LOG.addHandler(hdlr)
 LOG.setLevel(logging.INFO)
 
 # Settings
-parser.add_option("-l", "--log",
-                  dest="log_file",
-                  help="Log file",
-                  metavar="LOG")
-
-parser.add_option("-c", "--container",
-                  default="db_backup_binlogs",
-                  dest="container",
-                  help="CONTAINER",
-                  metavar="CONTAINER")
-
-parser.add_option("-u", "--os-username",
-                  default=os.environ.get('OS_USERNAME', ''),
-                  dest="username",
-                  help="User",
-                  metavar="USER")
-
-parser.add_option("-p", "--os-password",
-                  default=os.environ.get('OS_PASSWORD', ''),
-                  dest="password",
-                  help="Swift Password",
-                  metavar="PASSWORD")
-
-
-parser.add_option("-t", "--os-tenant-name",
-                  default=os.environ.get('OS_TENANT_NAME', ''),
-                  dest="tenant_name",
-                  help="Tenant Name",
-                  metavar="TENANT")
-
 parser.add_option("-a", "--os-auth-url",
                   default=os.environ.get('OS_AUTH_URL', ''),
                   dest="auth_url",
@@ -77,28 +47,56 @@ parser.add_option("-B", "--binlog-dir",
                   help="Binlog directory",
                   metavar="BINLOG_DIR")
 
+parser.add_option("-c", "--container",
+                  default=os.environ.get('BACKUP_BINLOG_CONTAINER', 'db_backup_binlogs'),
+                  dest="container",
+                  help="CONTAINER",
+                  metavar="CONTAINER")
+
+parser.add_option("-l", "--log",
+                  dest="log_file",
+                  help="Log file",
+                  metavar="LOG")
+
+parser.add_option("-p", "--os-password",
+                  default=os.environ.get('OS_PASSWORD', ''),
+                  dest="password",
+                  help="Swift Password",
+                  metavar="PASSWORD")
+
 parser.add_option("-s", "--secret-file",
                   default="/etc/mysql-backup/.backup.key",
                   dest="secret_file",
-                  help="Secret file",
-                  metavar="SECRET FILE")
+                  help="Secret file storing the key with which to encrypt backups",
+                  metavar="SECRET_FILE")
+
+parser.add_option("-t", "--os-tenant-name",
+                  default=os.environ.get('OS_TENANT_NAME', ''),
+                  dest="tenant_name",
+                  help="Tenant Name",
+                  metavar="TENANT")
+
+parser.add_option("-u", "--os-username",
+                  default=os.environ.get('OS_USERNAME', ''),
+                  dest="username",
+                  help="User",
+                  metavar="USER")
 
 (options, args) = parser.parse_args()
 
-log_file = options.log_file
-username = options.username
-password = options.password
-
 auth_url = options.auth_url
-tenant_name = options.tenant_name
-secret_file = options.secret_file
-
-container = options.container
+backup_dir = options.backup_dir
 binlog_dir = options.binlog_dir
+container = options.container
+log_file = options.log_file
+password = options.password
+secret_file = options.secret_file
+tenant_name = options.tenant_name
+username = options.username
+
 
 backup_command = '/usr/bin/innobackupex --no-timestamp'
 prepare_command = '/usr/bin/innobackupex --apply-log'
-backup_dir = options.backup_dir
 backup_name = "%s-%s-backup" % (time.strftime("%Y-%m-%d-%H%M-%Z-%a"),
                                 gethostname())
 backup_file = backup_name + ".tar.gz"

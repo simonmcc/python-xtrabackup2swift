@@ -18,44 +18,38 @@ parser = OptionParser()
 
 use_swift = True
 
-parser.add_option("-l", "--log", dest="log_file",
-                  help="Log file",
-                  metavar="LOG")
-
-parser.add_option("-c", "--container",
-                  default="",
-                  dest="container",
-                  help="CONTAINER",
-                  metavar="CONTAINER")
-
-parser.add_option("-u", "--os-username",
-                  default="",
-                  dest="username",
-                  help="User",
-                  metavar="USER")
-
-parser.add_option("-p", "--os-password",
-                  default="",
-                  dest="password",
-                  help="Swift Password",
-                  metavar="PASSWORD")
-
-
-parser.add_option("-t", "--os-tenant-name",
-                  default="",
-                  dest="tenant_name",
-                  help="Tenant Name",
-                  metavar="TENANT")
-
 parser.add_option("-a", "--os-auth-url",
-                  default="",
+                  default=os.environ.get('OS_AUTH_URL', ''),
                   dest="auth_url",
                   help="Auth URL",
                   metavar="AUTH_URL")
 
+parser.add_option("-b", "--backup-dir",
+                  default="/var/lib/mysql-backup",
+                  dest="backup_dir",
+                  help="Backup directory",
+                  metavar="BACKUP_DIR")
+
+parser.add_option("-c", "--container",
+                  default=os.environ.get('BACKUP_CONTAINER', 'db_backup'),
+                  dest="container",
+                  help="CONTAINER",
+                  metavar="CONTAINER")
+
+parser.add_option("-l", "--log",
+                  dest="log_file",
+                  help="Log file",
+                  metavar="LOG")
+
+parser.add_option("-p", "--os-password",
+                  default=os.environ.get('OS_PASSWORD', ''),
+                  dest="password",
+                  help="Swift Password",
+                  metavar="PASSWORD")
 
 parser.add_option("-D", "--purge-on-disk",
-                  action="store_false", dest="purge",
+                  action="store_false",
+                  dest="purge",
                   help="Purge Backup on disk",
                   metavar="PURGE")
 
@@ -64,48 +58,36 @@ parser.add_option("-P", "--purge-enc-on-disk",
                   help="Purge Backup on disk",
                   metavar="PURGE_ENC")
 
-parser.add_option("-b", "--backup-dir",
-                  default="/var/lib/mysql-backup",
-                  dest="backup_dir",
-                  help="Backup directory",
-                  metavar="BACKUP_DIR")
-
 parser.add_option("-s", "--secret-file",
                   default="/etc/mysql-backup/.backup.key",
                   dest="secret_file",
-                  help="Secret file",
-                  metavar="SECRET FILE")
+                  help="Secret file storing the key with which to encrypt backups",
+                  metavar="SECRET_FILE")
+
+parser.add_option("-t", "--os-tenant-name",
+                  default=os.environ.get('OS_TENANT_NAME', ''),
+                  dest="tenant_name",
+                  help="Tenant Name",
+                  metavar="TENANT")
+
+parser.add_option("-u", "--os-username",
+                  default=os.environ.get('OS_USERNAME', ''),
+                  dest="username",
+                  help="User",
+                  metavar="USER")
 
 (options, args) = parser.parse_args()
 
+auth_url = options.auth_url
+backup_dir = options.backup_dir
+container = options.container
 log_file = options.log_file
-
-
+password = options.password
 purge = options.purge
 purge_enc = options.purge_enc
-
-auth_url = options.auth_url
-if auth_url == "":
-    auth_url = os.environ.get('OS_AUTH_URL', '')
-
-tenant_name = options.tenant_name
-if tenant_name == "":
-    tenant_name = os.environ.get('OS_TENANT_NAME', '')
-
-password = options.password
-if password == "":
-    password = os.environ.get('OS_PASSWORD', '')
-
-username = options.username
-if username == "":
-    username = os.environ.get('OS_USERNAME', '')
-
-container = options.container
-if container == "":
-    container = os.environ.get('BACKUP_CONTAINER', 'db_backup')
-
-backup_dir = options.backup_dir
 secret_file = options.secret_file
+tenant_name = options.tenant_name
+username = options.username
 
 logging.StreamHandler(stream=log_file)
 

@@ -23,19 +23,27 @@ def cli_options():
     parser = OptionParser()
 
     parser.add_option("--use-swift",
-                      action="store_false", dest="use_swift", default=True,
+                      action="store_false",
+                      dest="use_swift",
+                      default=True,
                       help="Upload backup to Swift (default)")
 
     parser.add_option("--no-swift",
-                      action="store_false", dest="use_swift", default=True,
+                      action="store_false",
+                      dest="use_swift",
+                      default=True,
                       help="Do not upload backup to Swift")
 
-    parser.add_option("-l", "--log", dest="log_file",
-                      help="Log file", metavar="LOG")
+    parser.add_option("-l", "--log",
+                      dest="log_file",
+                      help="Log file",
+                      metavar="LOG")
 
     parser.add_option("-c", "--container",
-                      dest="container", default="db_backup",
-                      help="Swift Container used to store the backup objects",
+                      dest="container",
+                      default=os.environ.get('BACKUP_CONTAINER', 'db_backup'),
+                      help="Swift Container used to store the backup objects. \
+                      Defaults to env[BACKUP_CONTAINER]",
                       metavar="CONTAINER")
 
     parser.add_option("-b", "--backup-dir",
@@ -58,9 +66,10 @@ def cli_options():
                       metavar="USER")
 
     parser.add_option("-p", "--os-password",
-                      dest="password", default=os.environ.get('OS_PASSWORD', ''),
-                      secret=True, help="Swift Password. Defaults to \
-                      env[OS_PASSWORD]",
+                      dest="password",
+                      default=os.environ.get('OS_PASSWORD', ''),
+                      secret=True,
+                      help="Swift Password. Defaults to env[OS_PASSWORD]",
                       metavar="PASSWORD")
 
     parser.add_option("-t", "--os-tenant-name",
@@ -79,21 +88,26 @@ def cli_options():
                       help="MySQL datadir", metavar="datadir")
 
     parser.add_option("-D", "--purge-on-disk",
-                      action="store_false", dest="purge", default="false",
+                      action="store_false",
+                      dest="purge",
+                      default="false",
                       help="Purge Backup on disk", metavar="PURGE")
 
     parser.add_option("-P", "--purge-enc-on-disk",
-                      action="store_false", dest="purge_enc",
+                      action="store_false",
+                      dest="purge_enc",
                       default="false",
                       help="Purge Backup on disk", metavar="PURGE_ENC")
 
     parser.add_option("-w", "--work-dir",
-                      dest="workdir", default=os.getcwd(),
+                      dest="workdir",
+                      default=os.getcwd(),
                       metavar="Work Directory",
                       help="Top level restoration directory")
 
     parser.add_option("-f", "--file",
-                      dest="restore_file_enc", default="",
+                      dest="restore_file_enc",
+                      default="",
                       metavar="RESTORE_FILE_ENC",
                       help="Name of file to restore from")
 

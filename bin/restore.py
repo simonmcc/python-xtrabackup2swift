@@ -16,17 +16,11 @@ LOG = logging.getLogger(__name__)
 
 parser = OptionParser()
 
-parser.add_option("-w", "--work-dir",
-                  dest="workdir",
-                  default="",
-                  metavar="Work Directory",
-                  help="Top level restoration directory")
-
-parser.add_option("-f", "--file",
-                  dest="restore_file_enc",
-                  default="",
-                  metavar="RESTORE_FILE_ENC",
-                  help="Name of file to restore from")
+parser.add_option("-a", "--os-auth-url",
+                  default=os.environ.get('OS_AUTH_URL', ''),
+                  dest="auth_url",
+                  help="Auth URL",
+                  metavar="AUTH_URL")
 
 parser.add_option("-c", "--container",
                   dest="container",
@@ -34,19 +28,51 @@ parser.add_option("-c", "--container",
                   metavar="CONTAINER",
                   help="Container where backups exist")
 
+parser.add_option("-f", "--file",
+                  dest="restore_file_enc",
+                  default="",
+                  metavar="RESTORE_FILE_ENC",
+                  help="Name of file to restore from")
+
+parser.add_option("-p", "--os-password",
+                  default=os.environ.get('OS_PASSWORD', ''),
+                  dest="password",
+                  help="Swift Password",
+                  metavar="PASSWORD")
+
 parser.add_option("-s", "--secret-file",
                   default="/etc/mysql-backup/.backup.key",
                   dest="secret_file",
-                  help="Secret file",
-                  metavar="SECRET FILE")
+                  help="Secret file storing the key with which to encrypt backups",
+                  metavar="SECRET_FILE")
+
+parser.add_option("-t", "--os-tenant-name",
+                  default=os.environ.get('OS_TENANT_NAME', ''),
+                  dest="tenant_name",
+                  help="Tenant Name",
+                  metavar="TENANT")
+
+parser.add_option("-u", "--os-username",
+                  default=os.environ.get('OS_USERNAME', ''),
+                  dest="username",
+                  help="User",
+                  metavar="USER")
+
+parser.add_option("-w", "--work-dir",
+                  dest="workdir",
+                  default=os.getcwd(),
+                  metavar="Work Directory",
+                  help="Top level restoration directory")
 
 (options, args) = parser.parse_args()
 
-secret_file = options.secret_file
+auth_url = options.auth_url
 container = options.container
+password= options.password
+secret_file = options.secret_file
+tenant_name = options.tenant_name
+username = options.username
 workdir = options.workdir
-if workdir == "":
-    workdir = os.getcwd()
 
 # globals, set later
 restore_name = ''
@@ -61,10 +87,10 @@ restore_file_enc = options.restore_file_enc
 
 try:
     # establish connection
-    conn = Connection(os.environ['OS_AUTH_URL'],
-                      os.environ['OS_USERNAME'],
-                      os.environ['OS_PASSWORD'],
-                      tenant_name=os.environ['OS_TENANT_NAME'],
+    conn = Connection(auth_url,
+                      username,
+                      password,
+                      tenant_name=tenant_name,
                       auth_version="2.0")
 except ClientException, err:
     LOG.critical("No Swift Connection: %s", str(err))
