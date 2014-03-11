@@ -48,13 +48,16 @@ parser.add_option("-p", "--os-password",
                   metavar="PASSWORD")
 
 parser.add_option("-D", "--purge-on-disk",
-                  action="store_false",
+                  action="store_true",
                   dest="purge",
+                  default=False,
                   help="Purge Backup on disk",
                   metavar="PURGE")
 
 parser.add_option("-P", "--purge-enc-on-disk",
-                  action="store_false", dest="purge_enc",
+                  action="store_true",
+                  dest="purge_enc",
+                  default=False,
                   help="Purge Backup on disk",
                   metavar="PURGE_ENC")
 
