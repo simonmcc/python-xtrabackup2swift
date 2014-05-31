@@ -8,7 +8,9 @@ dist
 .testrepository
 .venv
 *.sublime-workspace
+.ropeproject/
 *.sqlite
+.swift*
 
 debian/*.log
 debian/*.debhelper

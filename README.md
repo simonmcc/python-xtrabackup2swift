@@ -38,3 +38,10 @@ rm -rf .venv/ ; virtualenv .venv/ ; . .venv/bin/activate
 # dependency chain install via pip as setuptools borks
 pip install python-swiftclient
 python setup.py develop
+
+
+Publish to PyPi
+===============
+
+python setup.py sdist upload
+

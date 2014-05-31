@@ -1,5 +1,19 @@
 # python-xtrabackup2swift common bits
 #
+# Copyright 2012 Hewlett-Packard Development Company, L.P. All Rights Reserved.
+#
+# Author: Simon McCartney <simon.mccartney@hp.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
 
 import sys
 import os
@@ -68,7 +82,6 @@ def cli_options():
     parser.add_option("-p", "--os-password",
                       dest="password",
                       default=os.environ.get('OS_PASSWORD', ''),
-                      secret=True,
                       help="Swift Password. Defaults to env[OS_PASSWORD]",
                       metavar="PASSWORD")
 
@@ -138,10 +151,10 @@ def backup_task(command):
 def ensure_container_exists(conn, container):
     headers = {}
 
-    print "checking container <%s>" % container
+    LOG.debug("Checking container <%s> exists" % container)
     try:
-        conn.post_container(container, headers=headers)
-    except ClientException, err:
+        meta = conn.head_container(container)
+    except ClientException as err:
         if err.http_status != 404:
             raise
         conn.put_container(container, headers=headers)
@@ -289,6 +302,9 @@ def encrypt_file(key, in_filename, out_filename=None, chunksize=64 * 1024):
 
 
 def connect_to_swift(options):
+    LOG.info("attempting to connect to %s as user:%s tenant_name:%s" % (options.auth_url,
+                                                                        options.username,
+                                                                        options.tenant_name))
     try:
         # establish connection
         conn = Connection(options.auth_url,
@@ -312,8 +328,7 @@ def restore_task(command):
 
 
 def download_file_from_swift(conn, container, filename):
-    LOG.info("Downloading file %s from container %s" %
-             (filename, container))
+    LOG.info("Downloading file %s from container %s" % (filename, container))
 
     try:
         headers, body = conn.get_object(container,
@@ -374,28 +389,32 @@ def run_restoration(options):
     restore_conf = 'restore.cnf'
     restore_file_enc = options.restore_file_enc
 
+    conn = connect_to_swift(options)
+
     # if not supplied by command line options, then get from user
     if restore_file_enc == "":
-        print "container %s" % options.container
-        list_backups(options.container)
+        list_backups(conn, options.container)
+        LOG.info("container %s" % options.container)
         print "What file do you wish to restore from? Enter: "
         restore_file_enc = sys.stdin.readline().rstrip()
-        # get name of tar.gz
-        restore_file = restore_file_enc.strip('.enc')
-        # get restore name
-        restore_name = restore_file.strip('.tar.gz')
+
+    # get name of tar.gz
+    restore_file = restore_file_enc.strip('.enc')
+    # get restore name
+    restore_name = restore_file.strip('.tar.gz')
 
     if not os.path.exists(options.workdir):
         os.mkdir(options.workdir)
 
     os.chdir(options.workdir)
 
-    download_file_from_swift(options.container, restore_file_enc)
+    download_file_from_swift(conn, options.container, restore_file_enc)
 
     # AES encrypt the file before uploading
     decrypt_file(secret, restore_file_enc, restore_file)
 
     restore_task("tar xvzf %s" % restore_file)
+    LOG.info("Restored to %s" % options.workdir)
 
     # remove old link if exists
     if os.path.exists(restore_dir):
@@ -422,11 +441,11 @@ def run_restoration(options):
     os.unlink(restore_file_enc)
     os.unlink(restore_file)
 
-    LOG.info("The restoration is ready to use"
+    LOG.info("The restoration is ready to use "
              "Now you will need to start mysql with "
-             "restored data\nby copying restore_conf to /etc/mysql/conf.d"
-             " and restarting mysql.\n"
-             "IMPORTANT: you may have to make sure to back up existing"
+             "restored data\nby copying restore_conf to /etc/mysql/conf.d "
+             "and restarting mysql.\n"
+             "IMPORTANT: you may have to make sure to back up existing "
              "data directory if it exists by copying it elsewhere!")
 
 

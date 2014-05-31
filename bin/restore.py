@@ -1,4 +1,18 @@
 #!/usr/bin/env python
+# Copyright 2012 Hewlett-Packard Development Company, L.P. All Rights Reserved.
+#
+# Author: Simon McCartney <simon.mccartney@hp.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
 
 import os
 import subprocess
@@ -43,7 +57,8 @@ parser.add_option("-p", "--os-password",
 parser.add_option("-s", "--secret-file",
                   default="/etc/mysql-backup/.backup.key",
                   dest="secret_file",
-                  help="Secret file storing the key with which to encrypt backups",
+                  help="Secret file storing the key with which "
+                  "to encrypt backups",
                   metavar="SECRET_FILE")
 
 parser.add_option("-t", "--os-tenant-name",
@@ -68,7 +83,7 @@ parser.add_option("-w", "--work-dir",
 
 auth_url = options.auth_url
 container = options.container
-password= options.password
+password = options.password
 secret_file = options.secret_file
 tenant_name = options.tenant_name
 username = options.username
