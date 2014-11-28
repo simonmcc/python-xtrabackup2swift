@@ -85,6 +85,12 @@ def cli_options():
                       help="Swift Password. Defaults to env[OS_PASSWORD]",
                       metavar="PASSWORD")
 
+    parser.add_option("-r", "--os-region-name",
+                      dest="region",
+                      default=os.environ.get('OS_REGION_NAME', ''),
+                      help="Swift Region. Defaults to env[OS_REGION_NAME]",
+                      metavar="REGION")
+
     parser.add_option("-t", "--os-tenant-name",
                       dest="tenant_name",
                       default=os.environ.get('OS_TENANT_NAME', ''),
@@ -175,7 +181,7 @@ def upload_file_to_swift(conn,
                          content_type,
                          content_length):
         LOG.info('Uploading %s to swift in the container %s' %
-                (filename, container))
+                 (filename, container))
         # you must set headers this way
         headers = {"Content-Type": content_type}
 
@@ -198,7 +204,7 @@ def run_backup(options):
     backup_command = '/usr/bin/innobackupex --no-timestamp'
     prepare_command = '/usr/bin/innobackupex --apply-log'
     backup_name = "%s-%s-backup" % (time.strftime("%Y-%m-%d-%H%M-%Z-%a"),
-                  gethostname())
+                                    gethostname())
     backup_file = backup_name + ".tar.gz"
     backup_file_enc = backup_file + ".enc"
     backup_key = "/etc/mysql-backup/.backup.key"
@@ -305,12 +311,20 @@ def connect_to_swift(options):
     LOG.info("attempting to connect to %s as user:%s tenant_name:%s" % (options.auth_url,
                                                                         options.username,
                                                                         options.tenant_name))
+
+    if options.region:
+        os_options = {}
+        os_options['region_name'] = options.region
+    else:
+        os_options = None
+
     try:
         # establish connection
         conn = Connection(options.auth_url,
                           options.username,
                           options.password,
                           tenant_name=options.tenant_name,
+                          os_options=os_options,
                           auth_version="2.0")
     except ClientException, err:
         LOG.critical("No Swift Connection: %s", str(err))

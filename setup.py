@@ -19,7 +19,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='python-xtrabackup2swift',
-    version='0.0.5',
+    version='0.0.6',
     description='xtrabackup wrappers to store & retrieve from swift',
     author='Simon McCartney',
     author_email='simon.mccartney@hp.com',
