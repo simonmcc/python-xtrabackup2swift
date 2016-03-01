@@ -8,8 +8,12 @@ scripts to make running Percona's xtrabackup & storing the backups in Swift easi
 	pip install --upgrade setuptools
 	python setup.py install
 
+Or from PyPI, [python-xtrabackup2swift](https://pypi.python.org/pypi/python-xtrabackup2swift):
+
+	pip install python-xtrabackup2swift
+
 ## Development (Linux/Ubuntu 12.04)
-	
+
 	sudo apt-get update
 	sudo apt-get install python-dev python-virtualenv
 	rm -rf /tmp/.venv/ ; virtualenv /tmp/.venv/ ; . /tmp/.venv/bin/activate
@@ -18,17 +22,17 @@ scripts to make running Percona's xtrabackup & storing the backups in Swift easi
 	python setup.py develop
 
 ### Building Debian/Ubuntu packages
-	
+
 	sudo apt-get update
 	sudo apt-get install -y git-buildpackage build-essential cdbs dh-make python-dev python-virtualenv
-	
+
 	# build unsigned (FIXME)
 	git-buildpackage -us -uc
 
 	# TODO: move to pbr so that we can auto-generate version strings from commit SHA1
 
 # Development (Mac/OSX)
-	
+
 	rm -rf .venv/ ; virtualenv .venv/ ; . .venv/bin/activate
 	# something is broken in the python-swiftclient
 	# dependency chain install via pip as setuptools borks
