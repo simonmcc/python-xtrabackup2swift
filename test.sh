@@ -44,7 +44,7 @@ echo
 echo RESTORE STARTED
 echo
 service mysql stop
-sudo ./bin/swift2xtrabackup --container=xtrabackup-test --secret-file=backup.key --os-user=$OS_USERNAME --os-password=$OS_PASSWORD --os-tenant-name=$OS_TENANT_NAME --os-auth-url=$OS_AUTH_URL --file=$LATEST --work-dir=/var/lib/mysql 
+sudo ./bin/swift2xtrabackup --container=xtrabackup-test --secret-file=backup.key --os-user=$OS_USERNAME --os-password=$OS_PASSWORD --os-tenant-name=$OS_TENANT_NAME --os-auth-url=$OS_AUTH_URL --file=$LATEST --work-dir=/var/lib/mysql
 echo
 echo RESTORE COMPLETE
 echo
